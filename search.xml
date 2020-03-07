@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title>HashMap有关知识点</title>
+    <url>/2020/03/07/HashMap/</url>
+    <content><![CDATA[<h1 id="HashMap"><a href="#HashMap" class="headerlink" title="HashMap"></a>HashMap</h1><h2 id="知识点一：Hash组成结构"><a href="#知识点一：Hash组成结构" class="headerlink" title="知识点一：Hash组成结构"></a>知识点一：Hash组成结构</h2><p>HashMap结构是由“数组”和“链表”组成，其结构类似于下图的形式：</p>
+<p><img src="assets/v2-1ec7b6f304eb9688e4984e611bcb70ad_hd.jpg" alt="img"></p>
+<p>要查找一个数据时，首先要找到数组对应下标的头部元素，而这个头部元素就是我们的链表的头，然后我们再根据链表的头部元素往下一个个匹配直到找到我们的想要的数据，或者匹配完也没找到对应的数据时就返回一个null。</p>
+<h3 id="为什么要使用数组和链表？"><a href="#为什么要使用数组和链表？" class="headerlink" title="为什么要使用数组和链表？"></a>为什么要使用数组和链表？</h3><p>两个字“性能”，HashMap是一个集添加、删除、查询都具备高性能的优点于一身。数组具有下标：查询快、插入慢，链表使用指针记录相邻的元素位置，插入快，查询慢。</p>
+<h2 id="知识点二：HashMap初始化容量机制和扩容机制"><a href="#知识点二：HashMap初始化容量机制和扩容机制" class="headerlink" title="知识点二：HashMap初始化容量机制和扩容机制"></a>知识点二：HashMap初始化容量机制和扩容机制</h2><p>HashMap是怎样把一个数据添加进去的，put数据的时候会涉及到多个知识点，我们再一一说明。</p>
+<h3 id="初始化容量"><a href="#初始化容量" class="headerlink" title="初始化容量"></a>初始化容量</h3><p>创建HashMap时，会默认给我们初始化一个默认长度为16的数组。源码中的resize()方法，此方法不仅会在初始化容量的时候用到，同时在扩容的时候也会用到，在这个方法中，有一个常量DEFAULT_INITIAL_CAPACITY控制着HashMap的初始化容量。</p>
+<h3 id="扩容机制"><a href="#扩容机制" class="headerlink" title="扩容机制"></a>扩容机制</h3><p>默认负载因子为0.75。因为扩容的时候需要把数据重新计算哈希排列，这样会影响性能。设置成0.75为了减少哈希冲突，当我们通过科学的测试后，发现当数据量超过数组容量的0.75时，产生hash冲突的几率会很高，因为hash冲突的数据会放到同一个链表，这样会加长链表的长度，同样也会影响HashMap的性能。</p>
+<h3 id="每次扩容的大小如何决定？"><a href="#每次扩容的大小如何决定？" class="headerlink" title="每次扩容的大小如何决定？"></a>每次扩容的大小如何决定？</h3><p>需要进行扩容的时候都是对原来的容量增加一倍的长度，这里主要是保证扩容后的长度是2的N次幂。至于这里为什么要保证这种机制，后面我们在key是如何被分配到数组的某一个位置时候结合说明。</p>
+<h3 id="最大容量是多少？"><a href="#最大容量是多少？" class="headerlink" title="最大容量是多少？"></a>最大容量是多少？</h3><p>我们同样在源码里面看到一个MAXIMUM_CAPACITY的常量，这个值换算出来为1073741824，当我们的容量达到这个值时，HashMap就不再进行扩容了。</p>
+<h2 id="知识点三：如何定位一个key会存储到数组的哪个位置？"><a href="#知识点三：如何定位一个key会存储到数组的哪个位置？" class="headerlink" title="知识点三：如何定位一个key会存储到数组的哪个位置？"></a>知识点三：如何定位一个key会存储到数组的哪个位置？</h2><p>新插入一个元素步骤如下：</p>
+<ol>
+<li><p>把输入的的Key通过hashCode()方法得到一个数字，比如说我们Key 为“name”得到的hashCode为3373707。</p>
+</li>
+<li><p>然后对这个哈希数和数组的长度进行一个运算，得到一个在数组长度范围之间的数字。这时可以通过 哈希数对数组长度取余的方法得到，但是这样效率不高。在源码中是：</p>
+<ul>
+<li>a. 获得HashMap的容量，也就是我们的数组长度。</li>
+<li>b. 把数组长度-1 然后与哈希code进行位与运算。<strong>HashCode &amp;（HashMap容量 -1</strong></li>
+</ul>
+<p>通过位与运算出来的结果和我们用取余的方式得出的结果是一致的,这也是HashMap的扩容机制必须是2的N次幂的原因，因为位与运算的速度要远高于取余的方式，所以HashMap最终采用了这种算法模式来决定一个key 会分配到哪个数组下标的位置去。</p>
+</li>
+</ol>
+<h2 id="知识点四：在put数据的时候如何减少我们的哈希冲突？"><a href="#知识点四：在put数据的时候如何减少我们的哈希冲突？" class="headerlink" title="知识点四：在put数据的时候如何减少我们的哈希冲突？"></a>知识点四：在put数据的时候如何减少我们的哈希冲突？</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> <span class="title">hash</span><span class="params">(Object key)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> h;</span><br><span class="line">    <span class="keyword">return</span> (key == <span class="keyword">null</span>) ? <span class="number">0</span> : (h = key.hashCode()) ^ (h &gt;&gt;&gt; <span class="number">16</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>把HashCode 与HashCode无符号右移16位的值进行异或处理，这个值才是我们真正用于数组定位的HashCode值，那么为什么要进行这样一个处理呢？如果不右移，那么做hash运算都是很低位数，容易产生冲突， 通过右移将更高位的影响向下传播，增加比较的维度，能减少冲突。</p>
+<h2 id="知识点五：链表过长怎么办？"><a href="#知识点五：链表过长怎么办？" class="headerlink" title="知识点五：链表过长怎么办？"></a>知识点五：链表过长怎么办？</h2><p>当进行put数据的时候，链表长度大于<strong>static final int *TREEIFY_THRESHOLD*</strong> = 8;  这个长度-1的时候就会进行链表转红黑树的操作。</p>
+<p><img src="assets/v2-831f0072e4649abda2ee41c36f2165f9_hd.jpg" alt="img"></p>
+<p>当红黑树的节点数量减少到一定程度的时候，红黑树又会转换成链表，而这个值是由static final int NTREEIFY_THRESHOLD = 6;</p>
+<p>因为数组长度有限的，所以无法避免哈希冲突造成链表数据过多，当我们链表数据过长的时候会进行一些优化，把链表转换为红黑树优化查询效率，当链表长度大于等于7的时候，进行链表转红黑树，当链表长度小于等于6的时候又会把红黑树还原成链表。</p>
+<h3 id="为什么在解决hash冲突的时候，不直接用红黑树-而选择先用链表，再转红黑树"><a href="#为什么在解决hash冲突的时候，不直接用红黑树-而选择先用链表，再转红黑树" class="headerlink" title="为什么在解决hash冲突的时候，不直接用红黑树?而选择先用链表，再转红黑树?"></a>为什么在解决hash冲突的时候，不直接用红黑树?而选择先用链表，再转红黑树?</h3><p>因为红黑树需要进行左旋，右旋，变色这些操作来保持平衡，而单链表不需要。 当元素小于8个当时候，此时做查询操作，链表结构已经能保证查询性能。当元素大于8个的时候，此时需要红黑树来加快查询速度，但是新增节点的效率变慢了。</p>
+<h2 id="知识点六：HashMap-get数据时是如何查找对应数据的？"><a href="#知识点六：HashMap-get数据时是如何查找对应数据的？" class="headerlink" title="知识点六：HashMap get数据时是如何查找对应数据的？"></a>知识点六：HashMap get数据时是如何查找对应数据的？</h2><p>1、先计算出key哈希值。</p>
+<p>2、通过哈希值定位到Key存在哪个数组下标。</p>
+<p>3、找到后看数组下标里面有没有节点。</p>
+<p>4、有节点的话区分节点数据是红黑树还是链表，然后分别使用对应数据结构的查找方法。</p>
+<p>5、根据查找的key和节点里面存的Key 值判断两个key是不是equas() ，equas则返回对应的节点，否则继续匹配下一个节点，直到匹配成功返回节点，或者没有节点配后返回null;</p>
+<p>查找时间复杂度：</p>
+<ul>
+<li><p>若为树，则在树中通过key.equals(k)查找，O(logn)；</p>
+</li>
+<li><p>若为链表，则在链表中通过key.equals(k)查找，O(n)。</p>
+</li>
+</ul>
+<h2 id="PUT知识点1-5都是PUT过程"><a href="#PUT知识点1-5都是PUT过程" class="headerlink" title="PUT知识点1-5都是PUT过程"></a>PUT知识点1-5都是PUT过程</h2><ul>
+<li>对key的hashCode()做hash运算，计算index; </li>
+<li>如果没碰撞直接放到bucket里； </li>
+<li>如果碰撞了，以链表的形式存在buckets后；</li>
+<li>如果碰撞导致链表过长(大于等于TREEIFY_THRESHOLD)，就把链表转换成红黑树(JDK1.8中的改动)； </li>
+<li>如果节点已经存在就替换old value(保证key的唯一性) </li>
+<li>如果bucket满了(超过load factor*current capacity)，就要resize。</li>
+</ul>
+<h2 id="HashMap在并发编程环境下有什么问题啊"><a href="#HashMap在并发编程环境下有什么问题啊" class="headerlink" title="HashMap在并发编程环境下有什么问题啊?"></a>HashMap在并发编程环境下有什么问题啊?</h2><p>(1)多线程扩容，引起的死循环问题<br>(2)多线程put的时候可能导致元素丢失<br>(3)put非null元素后get出来的却是null</p>
+<p>在jdk1.8中，死循环问题已经解决。其他两个问题还是存在。</p>
+<p>你一般怎么解决这些问题的？比如 ConcurrentHashmap，Hashtable 等线程安全等集合类。</p>
+<h2 id="一些常见的问题"><a href="#一些常见的问题" class="headerlink" title="一些常见的问题"></a>一些常见的问题</h2><ul>
+<li>键可以为Null值么?</li>
+</ul>
+<p>必须可以，key为null的时候，hash算法最后的值以0来计算，也就是放在数组的第一个位置。</p>
+<ul>
+<li>一般用什么作为HashMap的key?</li>
+</ul>
+<p>一般用Integer、String这种不可变类当HashMap当key，而且String最为常用。</p>
+<p>(1)因为字符串是不可变的，所以在它创建的时候<strong>hashcode就被缓存</strong>了，不需要重新计算。这就使得字符串很适合作为Map中的键，字符串的处理速度要快过其它的键对象。这就是HashMap中的键往往都使用字符串。</p>
+<p>(2)因为获取对象的时候要用到equals()和hashCode()方法，那么键对象正确的重写这两个方法是非常重要的,这些类已经很规范的覆写了hashCode()以及equals()方法。</p>
+<ul>
+<li><em>用可变类当HashMap的key有什么问题?</em></li>
+</ul>
+<p>hashcode可能发生改变，导致put进去的值，无法get出。</p>
+<ul>
+<li>如果让你实现一个自定义的class作为HashMap的key该如何实现？</li>
+</ul>
+<p>此题考察两个知识点</p>
+<ul>
+<li>重写hashcode和equals方法注意什么?</li>
+<li>如何设计一个不变类</li>
+</ul>
+<p><strong>针对问题一，记住下面四个原则即可</strong></p>
+<p>(1)两个对象相等，hashcode一定相等 (2)两个对象不等，hashcode不一定不等 (3)hashcode相等，两个对象不一定相等 (4)hashcode不等，两个对象一定不等</p>
+<p><strong>针对问题二，记住如何写一个不可变类</strong></p>
+<p>(1)类添加final修饰符，保证类不被继承。 如果类可以被继承会破坏类的不可变性机制，只要继承类覆盖父类的方法并且继承类可以改变成员变量值，那么一旦子类以父类的形式出现时，不能保证当前类是否可变。</p>
+<p>(2)保证所有成员变量必须私有，并且加上final修饰 通过这种方式保证成员变量不可改变。但只做到这一步还不够，因为如果是对象成员变量有可能再外部改变其值。所以第4点弥补这个不足。</p>
+<p>(3)不提供改变成员变量的方法，包括setter 避免通过其他接口改变成员变量的值，破坏不可变特性。</p>
+<p>(4)通过构造器初始化所有成员，进行深拷贝(deep copy) 如果构造器传入的对象直接赋值给成员变量，还是可以通过对传入对象的修改进而导致改变内部变量的值。例如：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">final</span> <span class="class"><span class="keyword">class</span> <span class="title">ImmutableDemo</span> </span>&#123;  </span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">int</span>[] myArray;  </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">ImmutableDemo</span><span class="params">(<span class="keyword">int</span>[] array)</span> </span>&#123;  </span><br><span class="line">        <span class="keyword">this</span>.myArray = array; <span class="comment">// wrong  </span></span><br><span class="line">    &#125;  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这种方式不能保证不可变性，myArray和array指向同一块内存地址，用户可以在ImmutableDemo之外通过修改array对象的值来改变myArray内部的值。 为了保证内部的值不被修改，可以采用深度copy来创建一个新内存保存传入的值。正确做法：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">final</span> <span class="class"><span class="keyword">class</span> <span class="title">MyImmutableDemo</span> </span>&#123;  </span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">int</span>[] myArray;  </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">MyImmutableDemo</span><span class="params">(<span class="keyword">int</span>[] array)</span> </span>&#123;  </span><br><span class="line">        <span class="keyword">this</span>.myArray = array.clone();   </span><br><span class="line">    &#125;   </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>(5)在getter方法中，不要直接返回对象本身，而是克隆对象，并返回对象的拷贝 这种做法也是防止对象外泄，防止通过getter获得内部可变成员对象后对成员变量直接操作，导致成员变量发生改变。</p>
+]]></content>
+      <categories>
+        <category>Java</category>
+      </categories>
+      <tags>
+        <tag>集合框架</tag>
+        <tag>数据结构</tag>
+      </tags>
+  </entry>
+</search>
